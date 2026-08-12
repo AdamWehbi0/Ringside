@@ -59,6 +59,20 @@ _Fill in real commands here as soon as the repo is scaffolded — an empty or wr
 5. **Every call starts at the router** (order / front-desk transfer / FAQ), never straight into order-taking. Don't hardcode a single-purpose flow for a "new" number — there's one number per tenant, not one per function.
 6. **A2P 10DLC registration is a real dependency with a real lead time.** Don't assume SMS "just works" in any environment before this is confirmed registered for that tenant.
 
+## Code standards
+
+How code gets written here. These are defaults, not a checklist to satisfy for its own sake — the goal is code the next session (or the next engineer) understands in one read.
+
+- **No over-engineering (YAGNI decides when to abstract).** Build for the requirement in front of you, not an imagined future one. One implementation gets a plain function, not an interface "in case." An abstraction has to earn its place by removing real, present duplication or coupling — the POS adapter earns it (three interchangeable POS systems, hard rule 4); a speculative "PaymentProviderFactory" for a second processor we don't have yet does not. When a later phase would need structure, flag it, don't pre-build it.
+- **Self-documenting code, effectively no comments.** Names carry the intent; a comment that restates what the code already says is deleted. The only comment that survives explains a non-obvious *why* the code itself can't — a vendor quirk, a regulatory constraint (e.g. the PCI redaction path), a deliberate workaround. If you feel the urge to comment *what* a block does, extract it into a well-named function instead.
+- **DRY, but don't force the wrong abstraction.** One source of truth for each rule, rate, and type — menu prices, plan rates, the order schema. But two things that merely look alike aren't the same thing: duplication is cheaper than the wrong shared abstraction, so wait until the pattern is real before unifying.
+- **SRP — one reason to change per unit.** Each service owns one job (router routes, order-engine validates and holds state, pos-bridge submits, sms/voice webhooks translate transport). Functions do one thing at one level of abstraction. If a function both decides and does, split it.
+- **Design patterns are tools, reached for only when they remove complexity.** The adapter (POS) is already load-bearing. A builder fits assembling the normalized order across multi-turn state; a strategy fits the SMS-link vs. Twilio-Pay payment paths. Use the named pattern when it makes the code simpler to reason about — never to add ceremony.
+- **Parse at the boundaries, don't trust.** Every edge — webhook payloads, LLM function-call output, POS API responses — is validated against a schema (`/packages/shared`) before it flows inward. Ties directly to the hard rule that the LLM extracts but never freehands prices or availability. Keep side effects (DB, payment, POS calls) at the edges; keep the core logic pure and testable.
+- **Fail loud on the money and POS paths.** Silent failure in payment gating or POS submission is the worst outcome in this system. No swallowed errors, no optimistic assumptions there — surface it, log it (redacted), and stop.
+
+Style/formatting that a linter or formatter enforces is not documented here — run `pnpm lint` and match the surrounding code.
+
 ## Working style
 
 - This is a solo-founder build, not a team with tribal knowledge to lean on — prefer boring, well-documented choices over clever ones. If a simpler tool does the job (see: FAQ lookup doesn't need a vector DB at this scale), use the simpler tool.
@@ -70,5 +84,6 @@ _Fill in real commands here as soon as the repo is scaffolded — an empty or wr
 
 - `docs/ARCHITECTURE.md` — the full stack rationale, why each vendor was chosen, and the layer-by-layer design (voice, SMS, order engine, payment, POS bridge, multi-tenancy, dashboard).
 - `docs/ROADMAP.md` — the phase-by-phase build sequence with checklists. This is the source of truth for "what do we build next."
+- `docs/INTEGRATIONS.md` — the A-Z vendor map: what each service (Vapi, Twilio, Deepgram, Cartesia, Stripe, Toast/Square/Clover, Clerk) handles vs. what we build, the webhook endpoints we expose, credentials checklist, and which registrations are on the critical path.
 - `docs/PRICING.md` — competitor pricing research, unit economics, and the three-plan pricing menu (Order Line / Full Line / Multi-Location). Relevant if a feature decision has a pricing or billing-logic implication (usage caps, minimums, overage rates) — check this before hardcoding a rate anywhere.
 - `marketing/` — the customer-facing offer page and landing page design brief. Not read every session; only relevant when the pricing menu or plan copy changes, since it needs to stay in sync with `docs/PRICING.md`.

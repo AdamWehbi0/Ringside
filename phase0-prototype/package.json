@@ -1,0 +1,11 @@
+{
+  "name": "ringside-phase0-prototype",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Throwaway Phase 0 prototype of the order engine core. Formalized into /services/order-engine in Phase 1.",
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc --noEmit"
+  }
+}
